@@ -1,4 +1,4 @@
-use actix_web::{web, Error, HttpResponse, Result};
+use actix_web::{error, web, Error, HttpResponse, Result};
 use crate::iter6::state::AppState;
 use crate::model::{NewCourse, NewCourseResponse, UpdateCourse, UpdateCourseResponse, CourseResponse};
 use serde_json::json;
@@ -89,13 +89,7 @@ pub async fn get_courses_for_tutor (
         .body()
         .await?;
 
-    println!("Finished call: {:?}", res);
-    println!();
-
     let course_response: Vec<CourseResponse> = serde_json::from_slice(&res)?;
-
-    println!("Course_response: {:?}", &course_response);
-    println!();
 
     let courses = &course_response.iter().map(|c| CourseResponse {
         course_id: c.course_id,
@@ -111,6 +105,14 @@ pub async fn get_courses_for_tutor (
         posted_time: c.posted_time.clone(),
     }).collect::<Vec<CourseResponse>>();
 
-    Ok(HttpResponse::Ok().json(&courses))
+    //Ok(HttpResponse::Ok().json(courses))
+
+    let mut ctx = tera::Context::new();
+    ctx.insert("courses", &courses);
+    let rendered_html = _tmpl
+        .render("course_list.html", &ctx)
+        .map_err(|_| error::ErrorInternalServerError("Template error"))?;
+    
+    Ok(HttpResponse::Ok().content_type("text/html").body(rendered_html))
     
 }
